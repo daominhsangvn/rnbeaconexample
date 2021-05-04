@@ -51,5 +51,17 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+    <string>This will allow "Smart Space" to find and connect to the Bluetooth accessrories. This app may also use Bluetooth to know when you're nearby.</string>
+    <key>NSBluetoothPeripheralUsageDescription</key>
+    <string>Smart Space requires Bluetooth to able detect nearby Beacons.</string>
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>This will allow "Smart Space" to find nearby buildings, desks and rooms.</string>
+    <key>NSLocationAlwaysUsageDescription</key>
+    <string>This will allow "Smart Space" to find nearby buildings, desks and rooms.</string>
+    <key>NSLocationUsageDescription</key>
+    <string>This will allow "Smart Space" to find nearby buildings, desks and rooms.</string>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>This will allow "Smart Space" to find nearby buildings, desks and rooms.</string>
 </dict>
 </plist>

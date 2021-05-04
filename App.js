@@ -75,7 +75,14 @@ const App: () => Node = () => {
     BeaconsManager.isStarted().then(started => {
       console.log('Beacon ranging started?', started);
       if (!started) {
-        BeaconsManager.startBeaconServices(region);
+        if (Platform.OS === 'ios') {
+          BeaconsManager.startMonitoringForRegion(region);
+          BeaconsManager.startUpdatingLocation();
+        } else {
+          BeaconsManager.startBeaconServices(region);
+          BeaconsManager.setBackgroundScanPeriod(30000);
+          BeaconsManager.setForegroundScanPeriod(30000);
+        }
       }
     });
 
