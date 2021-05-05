@@ -6,57 +6,32 @@
  * @flow strict-local
  */
 
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useCallback, useRef, useState} from 'react';
 import type {Node} from 'react';
 import {
   SafeAreaView,
   ScrollView,
+  Dimensions,
   StatusBar,
   StyleSheet,
   Text,
   useColorScheme,
   View,
   Platform,
+  TouchableOpacity,
 } from 'react-native';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+import {Colors} from 'react-native/Libraries/NewAppScreen';
 
 import BeaconsManager from 'react-native-beacons-manager';
 
-const Section = ({children, title}): Node => {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-};
+const {height} = Dimensions.get('window');
 
 const App: () => Node = () => {
   const isDarkMode = useColorScheme() === 'dark';
+  const beaconEventListener = useRef(null);
+  const regionDidEnter = useRef(null);
+  const regionDidExit = useRef(null);
 
   const backgroundStyle = {
     backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
@@ -68,12 +43,25 @@ const App: () => Node = () => {
     major: 1,
   });
 
-  useEffect(() => {
-    console.log('BeaconManager: App mounted');
-    console.log('BeaconManager: Region', region);
+  const beaconsDidRange = useCallback(data => {
+    console.log('BeaconManager: beaconsDidRange()', data);
+    const beacons = Array.isArray(data.beacons)
+      ? data.beacons
+      : JSON.parse(data.beacons);
 
+    console.log('BeaconManager: all beacons', beacons);
+  }, []);
+
+  const onRegionDidEnter = useCallback(() => {
+    console.log('BeaconManager: onRegionDidEnter()');
+  }, []);
+  const onRegionDidExit = useCallback(() => {
+    console.log('BeaconManager: onRegionDidExit()');
+  }, []);
+
+  const start = useCallback(() => {
     BeaconsManager.isStarted().then(started => {
-      console.log('Beacon ranging started?', started);
+      console.log('start() Beacon ranging started?', started);
       if (!started) {
         if (Platform.OS === 'ios') {
           BeaconsManager.startMonitoringForRegion(region);
@@ -83,93 +71,83 @@ const App: () => Node = () => {
           BeaconsManager.setBackgroundScanPeriod(30000);
           BeaconsManager.setForegroundScanPeriod(30000);
         }
-      }
-    });
 
-    // if (Platform.OS === 'ios') {
-    //   BeaconsManager.startMonitoringForRegion(region);
-    //   BeaconsManager.startUpdatingLocation();
-    // } else {
-
-    // }
-  }, [region]);
-
-  useEffect(() => {
-    console.log('BeaconManager: App mounted');
-    console.log('BeaconManager: Start Listeners');
-
-    const beaconsDidRange = data => {
-      console.log('BeaconManager: beaconsDidRange()', data);
-      const beacons = Array.isArray(data.beacons)
-        ? data.beacons
-        : JSON.parse(data.beacons);
-
-      console.log('BeaconManager: all beacons', beacons);
-    };
-
-    const onRegionDidEnter = () => {
-      console.log('BeaconManager: onRegionDidEnter()');
-    };
-    const onRegionDidExit = () => {
-      console.log('BeaconManager: onRegionDidExit()');
-    };
-
-    BeaconsManager.isStarted().then(started => {
-      console.log('Beacon ranging started?', started);
-      if (!started) {
-        const beaconEventListener = BeaconsManager.BeaconsEventEmitter.addListener(
+        beaconEventListener.current = BeaconsManager.BeaconsEventEmitter.addListener(
           'beaconsDidRange',
           beaconsDidRange,
         );
 
-        const regionDidEnter = BeaconsManager.BeaconsEventEmitter.addListener(
+        regionDidEnter.current = BeaconsManager.BeaconsEventEmitter.addListener(
           'regionDidEnter',
           onRegionDidEnter,
         );
 
-        const regionDidExit = BeaconsManager.BeaconsEventEmitter.addListener(
+        regionDidExit.current = BeaconsManager.BeaconsEventEmitter.addListener(
           'regionDidExit',
           onRegionDidExit,
         );
       }
     });
+  }, []);
 
-    return () => {
-      console.log('BeaconManager: App unmount');
-      // console.log('BeaconManager: Remove Listeners');
-      // beaconEventListener.remove();
-      // regionDidEnter.remove();
-      // regionDidExit.remove();
-    };
+  const stop = useCallback(() => {
+    BeaconsManager.isStarted().then(started => {
+      console.log('stop() Beacon ranging started?', started);
+      if (started) {
+        if (Platform.OS === 'ios') {
+          BeaconsManager.stopMonitoringForRegion(region);
+          BeaconsManager.stopRangingBeaconsInRegion(region);
+          BeaconsManager.stopUpdatingLocation();
+        } else {
+          BeaconsManager.stopBeaconServices(region);
+        }
+
+        if (beaconEventListener.current) {
+          beaconEventListener.current.remove();
+        }
+        if (regionDidEnter.current) {
+          regionDidEnter.current.remove();
+        }
+        if (regionDidExit.current) {
+          regionDidExit.current.remove();
+        }
+      }
+    });
   }, []);
 
   return (
     <SafeAreaView style={backgroundStyle}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
+      <View
+        style={{
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height,
+          padding: 40,
+        }}>
+        <TouchableOpacity
+          onPress={start}
           style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
+            padding: 10,
+            backgroundColor: '#ff1f1f',
+            borderRadius: 10,
+            width: '100%',
+            marginBottom: 10,
           }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.js</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
+          <Text style={{textAlign: 'center'}}>Start</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={stop}
+          style={{
+            padding: 10,
+            backgroundColor: '#ffffff',
+            borderRadius: 10,
+            width: '100%',
+          }}>
+          <Text style={{textAlign: 'center'}}>Stop</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 };
